@@ -4,6 +4,8 @@ import pandas
 import openpyxl
 import psycopg2
 from psycopg2 import OperationalError
+from psycopg2.extensions import JSONB
+
 
 def connect_to_database():
     try:
@@ -23,24 +25,27 @@ def connect_to_database():
 
 myCursor = connect_to_database().cursor()
 
+# SQL Queries
 sql = "INSERT INTO script (name,address,id) VALUES (%s,%s,%s)"
 jsonInsert = """insert into script select * from json_populate_recordset(NULL::script, %s)"""
 deleteData = "DELETE FROM script WHERE name = 'chris'"
 getData = "SELECT * FROM script"
 updateData = """UPDATE script SET eyecolor = 'blue' WHERE id = 'f0aace9c53c4401182f3e7bf44ba9d04'"""
 
+# read excel file and walk each row
 excel = pandas.read_excel("dataBase_ids.xlsx")
-
 i = 0
 while i < len(excel):
     ids = excel['ids'].iloc[i]
     i+= 1
-    columnValue = [{'name':'isCustomerOnAlex','value':'Yes'}]
-    valuesList = list(columnValue)
-    updateDataWithId = '''UPDATE script SET characteristic = jsonb_set(data, %s) WHERE id = %s'''
-    jsonArray = [{"name":"isCustomerOnAlex","value":"Yes"}]
+
+    columnValue = [{"name": "isCustomerOnAlex","value": "Yes"}]
+    convertJsonToJsonString = json.dumps(columnValue)
+
+    updateDataWithIdQuery = """UPDATE script SET characteristic = %s WHERE id = %s"""
+
     print(ids)
-    myCursor.execute(updateDataWithId,(valuesList,ids))
+    myCursor.execute(updateDataWithIdQuery,(convertJsonToJsonString,ids))
 
 data = ('chris', 'New Jersey',uuid.uuid4().hex)
 
@@ -54,11 +59,11 @@ dumps = json.dumps(jsonData)
 
 # myCursor.execute(jsonInsert,(dumps,))
 
-
+# fetch all data in database
 myCursor.execute(getData)
 record = myCursor.fetchall()
 json_dump = json.dumps(record)
-
 print(json_dump)
 
+#Close connection
 myCursor.close()
